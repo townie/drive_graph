@@ -78,8 +78,8 @@ flat_vals.each do |fv|
   fv[3].each do | val|
 	#  	{"data":{"source":"611408","target":"605755","weight":0.155478187,"group":"pi","networkId":1133,"networkGroupId":18,"intn":true,"rIntnId":2,"id":"e0"},"position":{},"group":"edges","removed":false,"selected":false,"selectable":true,"locked":false,"grabbed":false,"grabbable":true,"classes":""}, 
 	# next if fv[2] != "folder"
-  edges << {"data" => {:source => val,
-				   					   :target => fv[0],
+  edges << {"data" => {:source => fv[0],
+				   					   :target => val,
 				   					   :score =>  edge_weight_function(fv),
 				   					   :group => edge_group(fv),
 				   					   :networkId => 1133,
@@ -94,19 +94,24 @@ end;
 puts edges.compact.to_json
 # PRINT
 
+
+#just folders
+folder_edges = edges.select {|edge| edge["data"][:group] == 'folder' }.compact;
+puts folder_edges.compact.to_json
+
 @weight_count = {}
 edges.each do |edge|
 	@weight_count[edge["data"][:source]] = @weight_count[edge["data"][:source]].to_i + 1
 end;
 
-WEIGHTS = @weight_count;
+WEIGHTS2 = @weight_count;
 ############### NODES #############
 ############### NODES #############
 ############### NODES #############
 
 
 def node_weight_function(fv)
-	0.01 * WEIGHTS[fv[0]].to_i
+	0.01 * WEIGHTS2[fv[0]].to_i
 end
 
 nodes = []
@@ -126,6 +131,8 @@ end.compact;
 # PRINT
 puts nodes.to_json
 # PRINT
+folder_nodes = nodes.select {|edge| edge["data"][:type] == 	'folder' }.compact;
+puts folder_nodes.to_json
 
 
 ############### CSV #############
@@ -133,7 +140,7 @@ puts nodes.to_json
 ############### CSV #############
 
 
-CSV.open("/tmp/#{service_id}_tree.csv", 'wb') do | csv|
-	(nodes + edges).each { |node| csv << node }
+CSV.open("/tmp/drive/#{service_id}_tree.csv", 'wb') do | csv|
+	nodes.concat(edges).each { |node| csv << node }
 end
 
