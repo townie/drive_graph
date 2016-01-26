@@ -1,8 +1,8 @@
+### OG ###
 # Own service
 service_id = 13840915
 s = Service.find service_id
 
-# Defaults for data
 
 DEFAULT_EDGE_DATA = {  
    :position => {},
@@ -46,10 +46,19 @@ data = change_cassandra_datastore(s) { dcd.data(count: 100_000) };
 ############### flat_vals #############
 ############### flat_vals #############
 
+def feilds_4_datum(datum)
+  case datum.class
+  when GoogleDocsDatum
+    [:document_id, :title, :document_type,  :folder_ids]
+  else
+    [:document_id, :title, :document_type,  :folder_ids]
+  end
+end
+
 flat_vals = []
 data.each do |datum|
   # configs: [:document_id,  :folder_ids, :document_type, :title]
-  flat_vals << [:document_id, :title, :document_type,  :folder_ids].map {|fld| fld == :folder_ids ? datum.folder_ids.keys : datum.send(fld) }
+  flat_vals << feilds_4_datum(datum).inject({}) {|hash, field| hash[field] = (field == :folder_ids ? datum.folder_ids.keys : datum.send(field)); hash }
 end;
 
 
@@ -59,11 +68,11 @@ end;
 
 
 def edge_weight_function(fv)
-	0.01 * fv[3].count
+	0.01 * fv[:folder_ids].count
 end
 
 def edge_group(fv)
-	case fv[2]
+	case fv[:document_type]
 	when 'folder'
 		'folder'
 	else
@@ -75,7 +84,7 @@ edges = []
 id_counter = 0
 
 flat_vals.each do |fv| 
-  fv[3].each do | val|
+  fv[:folder_ids].each do | val|
 	#  	{"data":{"source":"611408","target":"605755","weight":0.155478187,"group":"pi","networkId":1133,"networkGroupId":18,"intn":true,"rIntnId":2,"id":"e0"},"position":{},"group":"edges","removed":false,"selected":false,"selectable":true,"locked":false,"grabbed":false,"grabbable":true,"classes":""}, 
 	# next if fv[2] != "folder"
   edges << {"data" => {:source => fv[0],
@@ -104,14 +113,14 @@ edges.each do |edge|
 	@weight_count[edge["data"][:source]] = @weight_count[edge["data"][:source]].to_i + 1
 end;
 
-WEIGHTS2 = @weight_count;
+WEIGHTS3 = @weight_count;
 ############### NODES #############
 ############### NODES #############
 ############### NODES #############
 
 
 def node_weight_function(fv)
-	0.01 * WEIGHTS2[fv[0]].to_i
+	0.01 * WEIGHTS3[fv[0]].to_i
 end
 
 nodes = []
@@ -121,9 +130,9 @@ nodes = flat_vals.map do |fv|
 	# ,"group":"nodes","removed":false,"selected":false,"selectable":true,"locked":false,"grabbed":false,"grabbable":true,"classes":"fn6935 fn6219 fn6680 fn6676 fn10713 fn7552 fn7495"}, 
 	# next if fv[2] != "folder"
   {"data" => { 
-  	:id => fv[0],
-  	:name => fv[1],
-  	:type => fv[2],
+  	:id => fv[:document_id],
+  	:name => fv[:title],
+  	:type => fv[:document_type],
   	:score => node_weight_function(fv) ||  0.01
   } }. merge(DEFAULT_NODE_DATA)
 end.compact;
